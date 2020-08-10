@@ -7,27 +7,27 @@ import traceback
 logging.basicConfig(level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 port = 8888
-wechat_peer = dict()
+server_peer = dict()
 client_peer = dict()
-wechat_connect_id = 0
+server_connect_id = 0
 client_connect_id = 0
 
 
-class WechatWebSocket(tornado.websocket.WebSocketHandler):
+class serverWebSocket(tornado.websocket.WebSocketHandler):
 
     def check_origin(self, origin):
         return True
 
     def open(self):
-        global wechat_connect_id, wechat_peer
-        logging.info("wechat connect opened,id is:%s", wechat_connect_id)
-        wechat_peer[str(wechat_connect_id)] = self
-        self.connect_id = wechat_connect_id
-        wechat_connect_id += 1
+        global server_connect_id, server_peer
+        logging.info("server connect opened,id is:%s", server_connect_id)
+        server_peer[str(server_connect_id)] = self
+        self.connect_id = server_connect_id
+        server_connect_id += 1
 
     def on_message(self, message):
         global client_peer
-        logging.info("get wechat msg:%s", message)
+        logging.info("get server msg:%s", message)
         try:
             for (k, peer) in client_peer.items():
                 peer.write_message(message)
@@ -35,9 +35,9 @@ class WechatWebSocket(tornado.websocket.WebSocketHandler):
             logging.error(identifier)
 
     def on_close(self):
-        global wechat_peer
-        wechat_peer.pop(str(self.connect_id))
-        logging.info("wechat connect closed")
+        global server_peer
+        server_peer.pop(str(self.connect_id))
+        logging.info("server connect closed")
 
 
 class ClientWebSocket(tornado.websocket.WebSocketHandler):
@@ -52,11 +52,11 @@ class ClientWebSocket(tornado.websocket.WebSocketHandler):
         client_connect_id += 1
 
     def on_message(self, message):
-        global wechat_peer
+        global server_peer
         logging.info("get client msg:%s", message)
         try:
-            logging.info(wechat_peer)
-            for (k, peer) in wechat_peer.items():
+            logging.info(server_peer)
+            for (k, peer) in server_peer.items():
                 logging.info(peer)
                 peer.write_message(message)
         except Exception as identifier:
@@ -70,14 +70,14 @@ class ClientWebSocket(tornado.websocket.WebSocketHandler):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        global wechat_peer
-        self.write("wechat connect count:" + str(len(wechat_peer)))
+        global server_peer
+        self.write("server connect count:" + str(len(server_peer)))
 
 
 def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
-        (r"/wechat", WechatWebSocket),
+        (r"/server", serverWebSocket),
         (r"/client", ClientWebSocket),
 
     ], debug=True)
